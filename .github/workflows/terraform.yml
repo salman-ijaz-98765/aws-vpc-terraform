@@ -1,47 +1,54 @@
-name: Terraform AWS VPC Deployment
+name: Terraform AWS VPC Deploy
 
 on:
   push:
     branches:
       - main
   pull_request:
-
-permissions:
-  contents: read
+    branches:
+      - main
 
 jobs:
   terraform:
-    name: 'Terraform Plan and Apply'
+    name: "Terraform Deploy"
     runs-on: ubuntu-latest
 
     env:
-      AWS_REGION: ${{ secrets.AWS_REGION }}
+      AWS_REGION: us-west-2
+      TF_VAR_region: us-west-2
 
     steps:
+      # Checkout your repo
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      # Setup Terraform
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: 1.5.7
 
-      - name: Configure AWS Credentials
+      # Configure AWS credentials
+      - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
-          aws-region: ${{ secrets.AWS_REGION }}
+          aws-region: ${{ env.AWS_REGION }}
 
+      # Initialize Terraform
       - name: Terraform Init
-        run: terraform init -input=false
+        run: terraform init -reconfigure
 
+      # Validate Terraform files
       - name: Terraform Validate
         run: terraform validate
 
+      # Show Terraform plan
       - name: Terraform Plan
-        run: terraform plan -out=tfplan
+        run: terraform plan
 
-      - name: Terraform Apply (auto approve)
-        if: github.ref == 'refs/heads/main'
-        run: terraform apply -auto-approve tfplan
+      # Apply only on push (not pull requests)
+      - name: Terraform Apply
+        if: github.event_name == 'push'
+        run: terraform apply -auto-approve
