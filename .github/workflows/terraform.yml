@@ -17,16 +17,20 @@ jobs:
     env:
       AWS_REGION: us-west-2
       TF_VAR_region: us-west-2
+      S3_BUCKET_NAME: my-terraform-state-bucket   # 🪣 change this to your actual bucket name
 
     steps:
+      # Checkout your repo
       - name: Checkout repository
         uses: actions/checkout@v4
 
+      # Setup Terraform
       - name: Setup Terraform
         uses: hashicorp/setup-terraform@v3
         with:
           terraform_version: 1.5.7
 
+      # Configure AWS credentials
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -34,15 +38,34 @@ jobs:
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
 
+      # ✅ Create S3 bucket if not exists
+      - name: Create S3 bucket if not exists
+        run: |
+          echo "🔍 Checking if S3 bucket exists..."
+          if aws s3api head-bucket --bucket $S3_BUCKET_NAME 2>/dev/null; then
+            echo "✅ S3 bucket $S3_BUCKET_NAME already exists."
+          else
+            echo "🚀 Creating S3 bucket $S3_BUCKET_NAME ..."
+            aws s3api create-bucket \
+              --bucket $S3_BUCKET_NAME \
+              --region $AWS_REGION \
+              --create-bucket-configuration LocationConstraint=$AWS_REGION
+            echo "🪣 S3 bucket created successfully!"
+          fi
+
+      # Terraform Init
       - name: Terraform Init
         run: terraform init -reconfigure
 
+      # Validate Terraform files
       - name: Terraform Validate
         run: terraform validate
 
+      # Show Terraform plan
       - name: Terraform Plan
         run: terraform plan
 
+      # Apply only on push (not pull requests)
       - name: Terraform Apply
         if: github.event_name == 'push'
         run: terraform apply -auto-approve
@@ -56,6 +79,7 @@ jobs:
     env:
       AWS_REGION: us-west-2
       TF_VAR_region: us-west-2
+      S3_BUCKET_NAME: my-terraform-state-bucket   # 🪣 same bucket as above
 
     steps:
       - name: Checkout repository
@@ -72,6 +96,21 @@ jobs:
           aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
           aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
           aws-region: ${{ env.AWS_REGION }}
+
+      # ✅ Create S3 bucket if not exists (for destroy job too)
+      - name: Create S3 bucket if not exists
+        run: |
+          echo "🔍 Checking if S3 bucket exists..."
+          if aws s3api head-bucket --bucket $S3_BUCKET_NAME 2>/dev/null; then
+            echo "✅ S3 bucket $S3_BUCKET_NAME already exists."
+          else
+            echo "🚀 Creating S3 bucket $S3_BUCKET_NAME ..."
+            aws s3api create-bucket \
+              --bucket $S3_BUCKET_NAME \
+              --region $AWS_REGION \
+              --create-bucket-configuration LocationConstraint=$AWS_REGION
+            echo "🪣 S3 bucket created successfully!"
+          fi
 
       - name: Terraform Init
         run: terraform init -reconfigure
