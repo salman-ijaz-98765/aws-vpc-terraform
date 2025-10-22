@@ -1,16 +1,14 @@
-name: Terraform AWS VPC Deploy
+name: Terraform Destroy AWS VPC
 
 on:
+  workflow_dispatch:   # Manual trigger button in GitHub Actions
   push:
     branches:
-      - main
-  pull_request:
-    branches:
-      - main
+      - destroy        # Optional: run automatically when pushing to 'destroy' branch
 
 jobs:
-  terraform:
-    name: "Terraform Deploy"
+  terraform-destroy:
+    name: "Terraform Destroy"
     runs-on: ubuntu-latest
 
     env:
@@ -40,15 +38,6 @@ jobs:
       - name: Terraform Init
         run: terraform init -reconfigure
 
-      # Validate Terraform files
-      - name: Terraform Validate
-        run: terraform validate
-
-      # Show Terraform plan
-      - name: Terraform Plan
-        run: terraform plan
-
-      # Apply only on push (not pull requests)
-      - name: Terraform Apply
-        if: github.event_name == 'push'
-        run: terraform apply -auto-approve
+      # Terraform Destroy
+      - name: Terraform Destroy
+        run: terraform destroy -auto-approve
